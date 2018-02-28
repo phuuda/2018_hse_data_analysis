@@ -1,0 +1,128 @@
+---
+title: "hw2"
+author: "Sofia Styrina"
+date: "28 February 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1.1
+
+```{r}
+Sys.setlocale("LC_ALL","UTF-8")
+
+library(tidyverse)
+library(mosaic)
+
+df <- read.csv('https://raw.githubusercontent.com/agricolamz/2018_data_analysis_for_linguists/master/data/students/phuuda/hw2_binomial/hw2_binomial.csv')
+
+n <- df[1, 1] # количество попыток = 115
+x <- df[1, 2] # количество успехов = 41
+
+prior <- df[1, 3] # наши предворительные идеи относительно доли успехов
+                  # = ожидаемая вероятность = 0.4104015
+
+density <- c(dbinom(x = 1:115, size = 115, prob = 0.4104015))
+params <- rep(paste("n = 115, p = 0.4104015", each = 115))
+id <- rep(1:115, 1)
+binomials <- data_frame(density, params, id)
+
+binomial_test <- binom.test(x = x, n = n, p = prior)
+binomial_test
+
+```
+
+### 1.2
+```{r}
+
+set.seed(42)
+do(1000)*
+  sum(sample(x = 1:0, 
+             size = 115, 
+             prob = c(0.4104015, 1-0.4104015), 
+             replace = TRUE)) ->
+  simulations
+
+simulations %>% 
+  mutate(greater = sum >= 41) %>% 
+  count(greater)
+
+simulations %>% 
+  ggplot(aes(sum))+
+  geom_density(fill = "lightblue")+
+  geom_vline(xintercept = 41, linetype = 2)+
+  theme_bw()+
+  labs(title = "Распределение 1000 симуляций с параметрами n = 115, p = 0.4104015")
+
+```
+
+### 1.3
+```{r}
+
+alpha_prior <- 0.4104015*115
+alpha_prior
+
+beta_prior <- (1-0.4104015)*115
+beta_prior
+
+alpha_data <- 41
+beta_data <- 115 - 41
+
+alpha_post <- alpha_prior + alpha_data
+beta_post <- beta_prior + beta_data
+  
+x <- seq(0, 1, length = 100)
+data_frame(p = rep(x, 3),
+           density = c(dbeta(x, alpha_prior, beta_prior),
+                       dbeta(x, alpha_data, beta_data),
+                       dbeta(x, alpha_post, beta_post)),
+           type = rep(c("prior", "likelihood", "posterior"), each = 100))%>% 
+  ggplot(aes(x = p, y = density, color = type))+
+  geom_line()+
+  theme_bw()
+
+# пик апостериорной вероятности
+alpha_post/(alpha_post+beta_post)
+
+
+```
+
+### 1.4
+```{r}
+
+alpha_prior = 1
+beta_prior = 1
+
+alpha_post <- alpha_prior + alpha_data
+beta_post <- beta_prior + beta_data
+
+x <- seq(0, 1, length = 100)
+data_frame(p = rep(x, 3),
+           density = c(dbeta(x, 1, 1),
+                       dbeta(x, alpha_data, beta_data),
+                       dbeta(x, alpha_data + 1, beta_data + 1)),
+           type = rep(c("prior", "likelihood", "posterior"), each = 100))%>% 
+  ggplot(aes(x = p, y = density, color = type))+
+  geom_line()+
+  theme_bw()
+
+# пик апостериорной вероятности
+alpha_post/(alpha_post+beta_post)
+```
+
+### 1.5
+
+* Результаты биноминального теста: p-value = 0.2563 > 0.05
+* -> Нулевая гипотеза принимается
+
+* График результата симуляции: более 50% данных лежат по правую сторону от k = 41
+* doesn't look anything like a normal distribution graph, quite skewed to the side
+* -> bad prior probability value ?
+
+* среднее (информированного) апостериорного распределения: 0.3834616
+* среднее (неинформированного) апостериорного распределения: 0.3589744
+* -> 0.02 difference, which is seemingly not significant
+
