@@ -1,0 +1,191 @@
+---
+title: "hw3"
+author: "Sofia Styrina"
+date: "6 March 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+### 1.1
+```{r}
+Sys.setlocale("LC_ALL","UTF-8")
+df <- read.csv('https://raw.githubusercontent.com/phuuda/2018_hse_data_analysis/master/hw3_binomial_ci/hw3_wodehouse.csv')
+
+library(tidyverse)
+library(bootstrap)
+library(mosaic)
+
+uniq_chapters <- unique(df$chapter)
+
+wcounts <- vector(mode="numeric", length=11)
+sircounts <- vector(mode="numeric", length=11)
+siravgs <- vector(mode="numeric", length=11)
+
+result <- cbind(data.frame(uniq_chapters, wcounts, sircounts, siravgs))
+
+df$word_count <- NA
+df$sir_count <- NA
+df$sir_avg <- NA
+
+for (chap in uniq_chapters){
+  
+  dftmp <- df[df$chapter==chap,]
+  sirtmp <- dftmp[dftmp$word=="сэр",]
+  
+  wcounttmp <- nrow(dftmp) # count words in each chapter
+  sircounttmp <- nrow(sirtmp) # count 'сэр' in each chapter
+  sirmeantmp <- sircounttmp / wcounttmp # среднее употребление слова “сэр” в главе
+
+  df$word_count[df$chapter == chap] <- wcounttmp
+  df$sir_count[df$chapter == chap] <- sircounttmp
+  df$sir_avg[df$chapter == chap] <- sirmeantmp
+  
+  result$wcounts[result$uniq_chapters == chap] <- wcounttmp
+  result$sircounts[result$uniq_chapters == chap] <- sircounttmp
+  result$siravgs[result$uniq_chapters == chap] <- sirmeantmp
+}
+
+result <- as_tibble(df2)
+result
+
+df %>% 
+  filter(word == "сэр") %>% 
+  summarise(g_mean = mean(sir_avg)) ->
+  grand_mean
+grand_mean <- as_tibble(grand_mean)
+grand_mean
+
+```
+
+### 1.2
+```{r}
+
+set.seed(42)
+df %>% 
+  filter(word == "сэр") ->
+  df_bs
+
+df_bs <- bootstrap(df_bs$sir_avg, nboot = 10000, theta = mean)$thetastar
+
+df_bs <- data_frame(means = df_bs) 
+df_bs %>% 
+  ggplot(aes(means)) +
+  geom_histogram(fill = "lightblue")+
+  theme_bw()+
+  labs(title = 'Средняя доля слова "сэр" в каждой главе', subtitle = "На основе 10000 бутстрэп-подвыборок")
+
+df_bs %>%
+  summarise(mean = mean(means),
+            q1 = quantile(means, 0.025),
+            q2 = quantile(means, 0.975))->
+  df_stats
+
+boot_int <- as_tibble(df_stats[1, 3] - df_stats[1, 2]) # result for 1.2
+boot_int
+```
+
+### 1.3
+```{r}
+
+lowci <- vector(mode="numeric", length=11)
+upci <- vector(mode="numeric", length=11)
+int_length <- vector(mode="numeric", length=11)
+bin_result <- cbind(data.frame(uniq_chapters, result$wcounts, result$sircounts, result$siravgs, lowci, upci, int_length))
+
+for (chap in uniq_chapters){
+  xtmp <- bin_result$result.sircounts[bin_result$uniq_chapters==chap]
+  ntmp <- bin_result$result.wcounts[bin_result$uniq_chapters==chap]
+    
+  low_ci <- binom.test(x = xtmp, n = ntmp, ci.method = "Clopper-Pearson")$conf.int[1]
+  up_ci <- binom.test(x = xtmp, n = ntmp, ci.method = "Clopper-Pearson")$conf.int[2]
+
+  bin_result$lowci[bin_result$uniq_chapters==chap] <- low_ci
+  bin_result$upci[bin_result$uniq_chapters==chap] <- up_ci
+  bin_result$int_length [bin_result$uniq_chapters==chap] <- up_ci - low_ci
+  
+}
+
+bin_max_int <- bin_result[which.max(bin_result$int_length),]$uniq_chapters
+bin_max_int <- as_tibble(bin_max_int)
+bin_max_int
+
+```
+
+### 1.4
+```{r}
+
+bayes_res <- cbind(data.frame(uniq_chapters, result$wcounts, result$sircounts, result$siravgs, lowci, upci, int_length))
+colnames(bayes_res)[5] <- "cred_int_l"
+colnames(bayes_res)[6] <- "cred_int_h"
+
+mu <- mean(df$sir_avg[df$word == "сэр"])
+var <- var(df$sir_avg[df$word == "сэр"])
+alpha0 <- ((1 - mu) / var - 1 / mu) * mu ^ 2
+beta0 <- alpha0 * (1 / mu - 1)
+
+for (i in 1:nrow(bayes_res)){
+  n <- bayes_res[i, 3]
+  n_words <- bayes_res[i, 2]
+  alpha_post <- n + alpha0
+  beta_post <- n_words - n + beta0
+  average_post <- alpha_post / (alpha_post + beta_post)
+  
+  cred_int_l <- qbeta(0.025, alpha_post, beta_post)
+  cred_int_h <- qbeta(0.975, alpha_post, beta_post)
+  int_length <- cred_int_h - cred_int_l
+  
+  bayes_res[i, 5] <- cred_int_l
+  bayes_res[i, 6] <- cred_int_h
+  bayes_res[i, 7] <- int_length
+}
+
+bayes_max_int <- bin_result[which.max(bayes_res$int_length),]$uniq_chapters
+bayes_max_int <- as_tibble(bayes_max_int)
+bayes_max_int
+
+```
+
+### 1.5
+```{r}
+
+bin_min_int <- bin_result[which.min(bin_result$int_length),]$uniq_chapters
+bin_min_int <- as_tibble(bin_min_int) # 1.5 result
+bin_min_int
+
+```
+
+### 1.6
+```{r}
+
+bayes_min_int <- bin_result[which.min(bayes_res$int_length),]$uniq_chapters
+bayes_min_int <- as_tibble(bayes_min_int) # 1.6 result
+bayes_min_int
+
+```
+
+### 1.7
+```
+* "сэр" встречается в главе от 7 до 77 раз (что, на первый взгляд, не коррелирует с длиной главы)
+
+* bootstrap дает наименьший доверительный интервал (0.000845129, что меньше каждого по-главного байесовского/биномиального интервала)
+
+* grand mean из пункта 1.1 и average у bootstrap очень близки (0.009314246 и 0.009310318)
+
+* главы с мин./макс. интервалами (глава 4/глава 12) совпадают в результатах подсчета с помощью bayesian & binomial методов
+
+* чем меньше среднее уптребление "сэр" в главе, тем (roughly) меньше доверительный интервал (bayesian & binomial)
+
+* в основном (для 10/11 глав) binomial interval получался больше, чем bayesian
+
+* максимальное различие между bayesian & binomial интервалами -- чуть больше 0.001
+
+* -> bayesian & binomial methods на этих данных дают близкие результаты
+
+* нет глав 3 и 13 ?
+
+
+```
