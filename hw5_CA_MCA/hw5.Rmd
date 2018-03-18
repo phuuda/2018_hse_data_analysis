@@ -1,0 +1,89 @@
+---
+title: "hw5"
+author: "Sofia Styrina"
+date: "18 March 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 1.1
+```{r}
+
+library(tidyverse)
+library(GGally)
+library(ca)
+
+chairs <- read.csv('https://raw.githubusercontent.com/phuuda/2018_hse_data_analysis/master/hw5_CA_MCA/hw5_chairs.csv')
+
+MCA <- MASS::mca(chairs[, 4:19])
+MCA
+
+geom.text.size = 3
+
+chairs <- cbind(chairs, MCA$rs)
+variables <- as_data_frame(MCA$cs)
+variables$var_names <- rownames(MCA$cs)
+chairs %>% 
+  ggplot(aes(`1`, `2`))+
+  geom_point(aes(color = Category))+
+  stat_ellipse(aes(color = Category))+
+  geom_text(data = variables, aes(`1`, `2`, label = var_names), size=geom.text.size)+
+  theme(axis.text = element_text(colour="black"))+
+  scale_x_continuous(limits = c(-0.015, 0.02))
+
+```
+
+### 1.2
+Sessel:
+* material: fabric, leather, soft padding (upholstery)
+* deep seat depth, has arms & a high back, can recline
+* can't roll around, rotate (swivel), or collapse (fold for storage)
+* primarily for adults
+* used for relaxing (& even sleeping)
+
+Stuhl:
+* material: wood, metal, paper(?), rattan, not soft
+* normal seat depth, no arms, normal, back/seat depth/height are adjustable
+* can roll & rotate (swivel), doesn't recline or rock, is collapsable
+* for adults & children
+* used for working, eating (at a table), and outdoors
+
+Variables:
+* Age adult don't weigh in as much
+* SaveSpace, MaterialSeat Polyamide overlaps as well
+* Rock, AddFunctions, Recline, Function, Seat.Depth, Seat.Height, MaterialSeat are some of the more decisive factors
+
+### 2.1
+```{r}
+colors <- read.csv('https://raw.githubusercontent.com/phuuda/2018_hse_data_analysis/master/hw5_CA_MCA/hw5_colreg.csv')
+color_names <- c("c01", "c02", "c03", "c04", "c05", "c06", "c07", "c08", "c09", "c10", "c11")
+rownames(colors) <- color_names
+
+ca <- ca(colors)
+ca
+summary(ca)
+
+colors_col <- data.frame(ca$colcoord)
+colors_col$rows <- rownames(ca$colcoord)
+
+colors_row <- data.frame(ca$rowcoord)
+colors_row$rows <- rownames(ca$rowcoord)
+
+colors_col %>% 
+  ggplot(aes(Dim1, Dim2, label = rows))+
+  geom_text(color = "blue")+
+  geom_text(data = colors_row, color = "red")+
+  theme_bw()+
+  labs(x = "Dim1 (42.1%)",
+       y = "Dim2 (32.6%)")
+```
+### 2.2
+Which colors are more typical to find in each genre?
+
+* Fiction: 2, 3, 7, 8, 11, and 4
+* Press: 5, 6, 9
+* Spoken: 1, 10
+* Academic: only 10
