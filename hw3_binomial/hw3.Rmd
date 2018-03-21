@@ -17,7 +17,7 @@ Sys.setlocale("LC_ALL","UTF-8")
 library(tidyverse)
 library(mosaic)
 
-df <- read.csv('https://raw.githubusercontent.com/agricolamz/2018_data_analysis_for_linguists/master/data/students/phuuda/hw2_binomial/hw2_binomial.csv')
+df <- read.csv('https://raw.githubusercontent.com/phuuda/2018_hse_data_analysis/master/hw3_binomial/hw3_binomial.csv')
 
 n <- df[1, 1] # количество попыток = 115
 x <- df[1, 2] # количество успехов = 41
