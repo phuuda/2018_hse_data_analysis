@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ### 1.1
 ```{r}
 Sys.setlocale("LC_ALL","UTF-8")
-df <- read.csv('https://raw.githubusercontent.com/phuuda/2018_hse_data_analysis/master/hw3_binomial_ci/hw3_wodehouse.csv')
+df <- read.csv('https://raw.githubusercontent.com/phuuda/2018_hse_data_analysis/master/hw4_binomial_ci/hw4_wodehouse.csv')
 
 library(tidyverse)
 library(bootstrap)
